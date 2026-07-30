@@ -483,8 +483,19 @@ async function submit(payloadPath) {
   const near = (p) => resolve(payloadDir, p);
 
   const eventId = payload.eventId ?? (await resolveEventId());
-  const teamName = required(payload.teamName, 'teamName');
   const title = required(payload.title, 'title');
+
+  // GSD 관례상 팀명은 만든 사람 이름이다. 지어낸 팀명이 들어가지 않도록 프로필 이름을 기본값으로
+  // 쓰고, 다른 값이 들어오면 그대로 진행하되 눈에 띄게 알린다 (마감 직전에 막지는 않는다).
+  const profileName = (await auth()).user?.name?.trim() || '';
+  const teamName = String(payload.teamName ?? '').trim() || profileName;
+  if (!teamName) fail('팀명을 정할 수 없습니다. payload에 teamName(참가자 이름)을 넣어주세요.');
+  if (profileName && teamName !== profileName) {
+    process.stderr.write(
+      `주의: 팀명이 밀그램 프로필 이름과 다릅니다 ("${teamName}" ≠ "${profileName}").\n` +
+        '      GSD 제출물의 팀명은 만든 사람 이름으로 등록하는 것이 관례입니다.\n',
+    );
+  }
 
   const markdown = payload.descriptionFile
     ? readFileSync(near(payload.descriptionFile), 'utf8')
