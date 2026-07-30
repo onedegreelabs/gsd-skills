@@ -14,8 +14,10 @@
 //   login                      전용 창을 띄워 밀그램 로그인 (최초 1회)
 //   whoami                     로그인 계정 확인 (로그인 안 돼 있으면 실패만 알림)
 //   today                      오늘 열린 GSD 이벤트 찾기
-//   status [eventId]           내 제출물 상태 · 빈 슬롯 · 마감 시각
-//   submit <payload.json>      등록(또는 갱신) 후 제출까지. 로그인 필요 시 창을 띄운다
+//   questions [eventId]        참가신청서 질문·선택지 확인
+//   register [eventId] [카테고리...]  참가 신청 (이미 했으면 그냥 확인만)
+//   status [eventId]           참가 상태 · 내 제출물 · 빈 슬롯 · 마감 시각
+//   submit <payload.json>      참가 신청(필요하면) → 등록/갱신 → 제출까지
 //   delete <eventId> <buildId> 등록 취소 (테스트 정리용)
 //   get <path>                 임의 GET (디버깅)
 
@@ -313,6 +315,149 @@ function kstDateString(date) {
   return new Date(date.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+// ---------------------------------------------------------------- 참가 신청
+
+/** 내 참가 기록. 신청하지 않았으면 null. */
+async function myParticipant(eventId) {
+  try {
+    return await api('GET', `/events/${eventId}/participants/me`);
+  } catch (error) {
+    if (error.status === 404 || error.status === 403) return null;
+    throw error;
+  }
+}
+
+/**
+ * 참가신청서의 선택형 질문에 답을 만든다.
+ *
+ * 옵션 문구는 기수마다 조금씩 다르다(40기는 '기타'가 'Other'였다). 그래서 payload에서 받은
+ * 카테고리를 실제 옵션 목록과 맞춰 본 뒤 넣는다. 못 맞추면 '기타'류 옵션으로 떨어진다.
+ */
+function pickOptions(options, wanted) {
+  const values = options.map((o) => o.value);
+  const norm = (s) => String(s).toLowerCase().replace(/[\s·・.,()&/-]/g, '');
+
+  const picked = [];
+  for (const w of wanted) {
+    const exact = values.find((v) => v === w);
+    if (exact) {
+      picked.push(exact);
+      continue;
+    }
+    const loose = values.find((v) => norm(v) === norm(w) || norm(v).includes(norm(w)) || norm(w).includes(norm(v)));
+    if (loose) picked.push(loose);
+  }
+
+  if (picked.length) return [...new Set(picked)];
+
+  // 아무것도 못 맞췄으면 '기타' 계열로
+  const other = options.find((o) => o.isOther) ?? options.at(-1);
+  return other ? [other.value] : [];
+}
+
+/** 참가신청서 답안을 만든다. 사람이 직접 답해야 하는 질문이 있으면 알려준다. */
+async function buildRegistrationAnswers(eventId, categories) {
+  let form;
+  try {
+    form = await api('GET', `/events/${eventId}/registration-form/questions`);
+  } catch {
+    return { answers: {}, blocked: [] };
+  }
+
+  const questions = form?.questions ?? [];
+  const answers = {};
+  const blocked = [];
+
+  for (const q of questions) {
+    if (!q.required) continue;
+
+    if (q.type === 'choice') {
+      const options = q.choice?.options ?? [];
+      const picked = pickOptions(options, categories);
+      if (!picked.length) {
+        blocked.push(q.title);
+        continue;
+      }
+      // CHECKBOX는 배열, RADIO·DROP_DOWN은 문자열
+      answers[q.questionId] = q.choice?.type === 'CHECKBOX' ? picked : picked[0];
+      continue;
+    }
+
+    // 약관 동의나 서술형은 대신 답하지 않는다 — 본인이 직접 해야 한다
+    blocked.push(q.title);
+  }
+
+  return { answers, blocked };
+}
+
+/**
+ * 제출할 수 있는 상태로 만든다. 신청을 안 했으면 대신 신청해 준다.
+ * 수강생은 이미 교육에 참가한 사람이라, 신청 누락은 절차 문제일 뿐이므로 막지 않고 처리한다.
+ */
+async function ensureParticipant(eventId, categories = []) {
+  const me = await myParticipant(eventId);
+
+  // 신청을 취소하거나 거절된 이력이 있으면 기록은 남고 상태만 바뀐다 — 이때는 다시 신청한다
+  const needsFreshRegistration = !me || me.status === 'cancelled' || me.status === 'rejected';
+
+  if (me && !needsFreshRegistration) {
+    if (me.status !== 'approved') {
+      fail(
+        `참가 신청이 승인 대기 중입니다 (상태: ${me.status}).\n` +
+          '운영진(지팡이)에게 승인을 요청한 뒤 다시 실행하세요.',
+      );
+    }
+    const type = me.hackathonParticipantType;
+    if (type && type !== 'participant') {
+      fail(
+        `이 계정은 참가자 유형이 '${type}' 입니다. 제출물은 '참가자' 유형만 등록할 수 있습니다.\n` +
+          '운영진(지팡이)에게 유형 변경을 요청하세요.',
+      );
+    }
+    if (!type) {
+      fail(
+        '이 계정에 참가자 유형이 지정되어 있지 않아 제출물을 등록할 수 없습니다.\n' +
+          "운영진(지팡이)에게 참가자 유형을 '참가자'로 지정해 달라고 요청하세요.",
+      );
+    }
+    return { registered: false, participantId: me.id };
+  }
+
+  // 신청 이력이 없거나 취소·거절 상태다 — 대신 신청한다
+  const event = await api('GET', `/events/${eventId}`);
+  const ticketId = event?.tickets?.[0]?.id;
+  if (!ticketId) fail('이벤트에 신청 가능한 티켓이 없습니다. 운영진에게 문의하세요.');
+
+  const { answers, blocked } = await buildRegistrationAnswers(eventId, categories);
+  if (blocked.length) {
+    fail(
+      '참가신청서에 직접 답해야 하는 항목이 있어 대신 신청할 수 없습니다:\n' +
+        blocked.map((t) => `  - ${t}`).join('\n') +
+        `\n\n이벤트 페이지에서 참가 신청을 먼저 해주세요:\n  https://www.milgram.io/ko/event/${eventId}`,
+    );
+  }
+
+  process.stderr.write(
+    me?.status === 'cancelled'
+      ? '참가 신청이 취소된 상태라 다시 신청합니다\n'
+      : '참가 신청이 안 되어 있어 대신 신청합니다\n',
+  );
+  const result = await api('POST', `/events/${eventId}/register`, {
+    ticketId,
+    hackathonParticipantType: 'participant',
+    registrationAnswers: answers,
+  });
+
+  if (result?.status && result.status !== 'approved') {
+    fail(
+      `참가 신청은 접수됐지만 승인 대기 상태입니다 (${result.status}).\n` +
+        '운영진(지팡이)에게 승인을 요청한 뒤 다시 실행하세요.',
+    );
+  }
+
+  return { registered: true, participantId: result?.id ?? null, answers };
+}
+
 async function slotState(eventId) {
   const res = await api('GET', `/events/${eventId}/build-slots?limit=50`);
   const rows = asArray(res);
@@ -350,6 +495,10 @@ async function submit(payloadPath) {
   const imagePaths = (payload.images ?? []).map(near);
   if (!imagePaths.length) fail('제출물 사진이 최소 1장 필요합니다 (images).');
   if (imagePaths.length > MAX_IMAGES) fail(`제출물 사진은 최대 ${MAX_IMAGES}장입니다.`);
+
+  // 참가 신청이 안 되어 있으면 대신 신청한다 (참가신청서 답까지 payload의 categories로)
+  const categories = [payload.categories ?? payload.category ?? []].flat().filter(Boolean);
+  const registration = await ensureParticipant(eventId, categories);
 
   const state = await slotState(eventId);
 
@@ -414,7 +563,18 @@ async function submit(payloadPath) {
   const publicUrl = `https://www.milgram.io/ko/event/${eventId}/builds`;
   console.log(
     JSON.stringify(
-      { ok: true, eventId, buildId, created, updated: !created, teamName, title, publicUrl, imageCount: uploaded.length },
+      {
+        ok: true,
+        eventId,
+        buildId,
+        created,
+        updated: !created,
+        registered: registration.registered,
+        teamName,
+        title,
+        publicUrl,
+        imageCount: uploaded.length,
+      },
       null,
       2,
     ),
@@ -472,13 +632,42 @@ try {
       );
       break;
     }
+    case 'questions': {
+      const eventId = rest[0] ?? (await resolveEventId());
+      const form = await api('GET', `/events/${eventId}/registration-form/questions`);
+      console.log(
+        JSON.stringify(
+          (form?.questions ?? []).map((q) => ({
+            title: q.title,
+            required: q.required,
+            type: q.type,
+            choiceType: q.choice?.type ?? null,
+            options: (q.choice?.options ?? []).map((o) => o.value),
+          })),
+          null,
+          2,
+        ),
+      );
+      break;
+    }
+    case 'register': {
+      const eventId = rest[0] ?? (await resolveEventId());
+      const categories = rest.slice(1);
+      const r = await ensureParticipant(eventId, categories);
+      console.log(JSON.stringify({ ok: true, eventId, ...r }, null, 2));
+      break;
+    }
     case 'status': {
       const eventId = rest[0] ?? (await resolveEventId());
+      const me = await myParticipant(eventId);
       const s = await slotState(eventId);
       console.log(
         JSON.stringify(
           {
             eventId,
+            registered: !!me,
+            participantStatus: me?.status ?? null,
+            participantType: me?.hackathonParticipantType ?? null,
             viewerRole: s.viewerRole,
             totalSlots: s.totalSlots,
             emptySlots: s.emptyCount,
@@ -525,7 +714,7 @@ try {
       break;
     }
     default:
-      fail('usage: milgram.mjs login|whoami|today|status|submit|delete|get');
+      fail('usage: milgram.mjs login|whoami|today|questions|register|status|submit|delete|get');
   }
 } catch (error) {
   fail(error.message);

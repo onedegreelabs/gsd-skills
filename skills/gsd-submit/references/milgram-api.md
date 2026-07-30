@@ -43,6 +43,8 @@ GET https://www.milgram.io/api/auth/session
 | 등록 취소 | `DELETE /events/{eventId}/builds/{buildId}` |
 | 파일 업로드 | `POST /files/upload` (multipart, 필드명 `file`) |
 | 이벤트 참가 / 취소 | `POST /events/{eventId}/register` · `DELETE /events/{eventId}/unregister` |
+| 내 참가 기록 | `GET /events/{eventId}/participants/me` (신청 안 했으면 404) |
+| 참가신청서 질문 | `GET /events/{eventId}/registration-form/questions` |
 
 GSD 커뮤니티 id는 `c91c74be-c428-4293-bb6e-5024f4e97241`.
 
@@ -146,6 +148,45 @@ DELETE /events/{eventId}/builds/{buildId}
 
 그리고 **순서를 지킨다.** 참가를 먼저 취소해 버리면 그 순간부터 참가자가 아니라
 자기 팀도 못 건드린다 (403 `Only approved participants…`). 참가 취소는 맨 마지막이다.
+
+## 참가 신청 (자동)
+
+제출은 승인된 참가자만 할 수 있어서, 신청을 빠뜨린 수강생을 위해 `submit` 이 대신 신청한다
+(`ensureParticipant`).
+
+```json
+POST /events/{eventId}/register
+{ "ticketId": "…", "hackathonParticipantType": "participant",
+  "registrationAnswers": { "<questionId>": ["반복 업무 자동화"] } }
+→ { "id": "…", "status": "approved" }
+```
+
+- `ticketId` 는 이벤트 상세(`GET /events/{eventId}`)의 `tickets[0].id`
+- `hackathonParticipantType` 은 반드시 `participant` — 다른 유형은 제출물을 만들 수 없다
+- 답변 값 타입은 질문에 따라 다르다: `CHECKBOX` → `string[]`, `RADIO`·`DROP_DOWN` → `string`,
+  `text` → `string`, `terms`·`checkbox` → `boolean`
+- 저장된 답변은 관리 API에서 `registrationFormAnswers` 로 확인한다
+  (`GET /event-managements/{eventId}/participants/{participantId}`).
+  참가자 본인 조회(`/participants/me`)에는 이 필드가 없다
+
+### 취소하면 기록이 남는다
+
+`unregister` 는 기록을 지우지 않고 **`status` 만 `cancelled` 로 바꾼다.**
+그래서 `/participants/me` 는 404가 아니라 `cancelled` 인 레코드를 돌려준다.
+"신청 안 함"으로 착각하면 안 되고, 이 상태에서는 `register` 를 다시 불러야 한다
+(`rejected` 도 같다). 상태 값은 `invited·waitlisted·pending·approved·rejected·cancelled`.
+
+### 유형은 본인이 못 바꾼다
+
+`PATCH /events/{eventId}/participants/me` 의 DTO에는 `hackathonParticipantType` 이 없다.
+멘토로 등록된 계정을 참가자로 바꾸려면 **운영자 권한**이 필요하다.
+
+```
+PATCH /event-managements/{eventId}/participants/{participantId}
+{ "hackathonParticipantType": "participant" }
+```
+
+`null` 로 되돌리는 건 통하지 않는다(조용히 무시된다).
 
 ## 스킬을 테스트할 때
 
