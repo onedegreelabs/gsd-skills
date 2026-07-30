@@ -68,10 +68,18 @@ function killProfile() {
   }
 }
 
-/** 밀그램 탭에서 세션을 읽는다. { token, user } — 로그인 전이면 token: null */
-function readMilgramSession({ foreground = false, url = 'https://www.milgram.io/ko' } = {}) {
+/** 탭을 연다 (또는 이동시킨다). 로그인 대기 중에는 절대 다시 부르면 안 된다 — 진행 중인
+ *  로그인 흐름(구글 리다이렉트 등)을 이 URL로 되돌려 버려서 로그인이 끊긴다. */
+function openMilgramTab({ foreground = false, url = 'https://www.milgram.io/ko' } = {}) {
   chromux(['open', ...(foreground ? [] : ['--background']), SESSION, url]);
+}
 
+/**
+ * 지금 열려 있는 탭에서 세션만 읽는다. **탐색(navigate)하지 않는다.**
+ * 로그인 흐름 중간(구글 로그인 페이지 등)에 불러도 탭을 건드리지 않고,
+ * milgram.io가 아닌 origin이면 fetch가 실패해 token: null 로 조용히 돌아온다.
+ */
+function peekSession() {
   const file = join(tmpdir(), `gsd-auth-${randomUUID()}.js`);
   writeFileSync(
     file,
@@ -126,12 +134,14 @@ async function auth({ interactive = true } = {}) {
   launchProfile({ headless: true });
   let result;
   try {
-    result = readMilgramSession();
+    openMilgramTab();
+    result = peekSession();
   } catch (e) {
     // 프로파일이 headed로 이미 떠 있는 등 상태가 꼬였으면 리셋 후 한 번 더
     killProfile();
     launchProfile({ headless: true });
-    result = readMilgramSession();
+    openMilgramTab();
+    result = peekSession();
   }
   if (result.token) {
     cachedAuth = result;
@@ -158,12 +168,12 @@ async function auth({ interactive = true } = {}) {
       '──────────────────────────────────────────────\n로그인을 기다리는 중',
   );
 
-  readMilgramSession({ foreground: true, url });
+  openMilgramTab({ foreground: true, url }); // 여기서 딱 한 번만 이동한다
   for (let i = 0; i < LOGIN_WAIT_SECONDS / 3; i++) {
     await sleep(3000);
     process.stderr.write('.');
     try {
-      result = readMilgramSession({ url });
+      result = peekSession(); // 탐색 없이 지금 화면 그대로 확인 — 로그인 흐름을 방해하지 않는다
       if (result.token) {
         process.stderr.write(`\n로그인 확인: ${result.user?.email ?? ''}\n`);
         cachedAuth = result;
