@@ -121,6 +121,8 @@ scripts/capture.sh --cleanup            # 다 찍은 뒤 한 번
 ## 4. 등록
 
 `out/payload.json` 을 만들고 한 번에 제출한다.
+`descriptionFile`·`images`·`teamLogo` 의 경로는 **payload.json이 있는 폴더 기준**이다 —
+실행 위치가 어디든 상관없다.
 
 ```json
 {
@@ -129,7 +131,7 @@ scripts/capture.sh --cleanup            # 다 찍은 뒤 한 번
   "summary": "복잡한 마케팅 성과 데이터를 채팅으로 조회하는 대화형 AI 서비스입니다.",
   "descriptionFile": "body.md",
   "links": [{ "label": "서비스 바로가기", "url": "https://my-app.vercel.app" }],
-  "images": ["out/shot1.png", "out/shot2.png"]
+  "images": ["shot1.png", "shot2.png"]
 }
 ```
 

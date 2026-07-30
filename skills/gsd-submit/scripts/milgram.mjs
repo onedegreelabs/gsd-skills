@@ -22,7 +22,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, unlinkSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, basename, extname, resolve } from 'node:path';
+import { join, dirname, basename, extname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { markdownToDescription } from './md-to-tiptap.mjs';
 
@@ -320,18 +320,21 @@ async function slotState(eventId) {
 
 async function submit(payloadPath) {
   const payload = JSON.parse(readFileSync(payloadPath, 'utf8'));
+  const payloadDir = dirname(resolve(payloadPath));
+  // payload.json 안의 상대 경로는 payload.json이 있는 폴더 기준이다 — 실행 위치(cwd)와 무관하게
+  const near = (p) => resolve(payloadDir, p);
 
   const eventId = payload.eventId ?? (await resolveEventId());
   const teamName = required(payload.teamName, 'teamName');
   const title = required(payload.title, 'title');
 
   const markdown = payload.descriptionFile
-    ? readFileSync(resolve(payloadPath, '..', payload.descriptionFile), 'utf8')
+    ? readFileSync(near(payload.descriptionFile), 'utf8')
     : payload.descriptionMarkdown;
   if (!markdown?.trim()) fail('descriptionMarkdown 또는 descriptionFile 이 필요합니다.');
   const description = markdownToDescription(markdown);
 
-  const imagePaths = payload.images ?? [];
+  const imagePaths = (payload.images ?? []).map(near);
   if (!imagePaths.length) fail('제출물 사진이 최소 1장 필요합니다 (images).');
   if (imagePaths.length > MAX_IMAGES) fail(`제출물 사진은 최대 ${MAX_IMAGES}장입니다.`);
 
@@ -346,7 +349,7 @@ async function submit(payloadPath) {
   const thumbnail = uploaded[0].url;
   const images = uploaded.slice(1).map((u) => u.url);
 
-  const teamLogo = payload.teamLogo ? (await uploadFile(payload.teamLogo)).key : undefined;
+  const teamLogo = payload.teamLogo ? (await uploadFile(near(payload.teamLogo))).key : undefined;
 
   const links = (payload.links ?? [])
     .filter((l) => l?.url)
