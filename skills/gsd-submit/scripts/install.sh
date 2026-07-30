@@ -17,6 +17,27 @@ info() { printf '\n▶ %s\n' "$1"; }
 done_() { printf '  ✓ %s\n' "$1"; }
 warn() { printf '  ! %s\n' "$1"; }
 
+# 로그인시켜 둘 밀그램 페이지 — 오늘(KST) 열리는 기수 이벤트가 있으면 그 페이지,
+# 없으면 다음 기수, 그것도 없으면 커뮤니티 이벤트 목록. 공개 API라 로그인이 필요 없다.
+milgram_page_url() {
+  node --input-type=module - <<'JS' 2>/dev/null || echo "https://www.milgram.io/ko/community/getshipdoneclub/events"
+const COMMUNITY = 'c91c74be-c428-4293-bb6e-5024f4e97241';
+const fallback = 'https://www.milgram.io/ko/community/getshipdoneclub/events';
+try {
+  const res = await fetch(`https://api.milgram.io/communities/${COMMUNITY}/events?limit=100`);
+  const events = (await res.json())?.data?.data ?? [];
+  const kstDay = (d) => new Date(new Date(d).getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  const today = kstDay(Date.now());
+  const dated = events.filter((e) => e.startAt).map((e) => ({ id: e.id, day: kstDay(e.startAt) }));
+  const pick = dated.find((e) => e.day === today)
+    ?? dated.filter((e) => e.day > today).sort((a, b) => a.day.localeCompare(b.day))[0];
+  console.log(pick ? `https://www.milgram.io/ko/event/${pick.id}` : fallback);
+} catch {
+  console.log(fallback);
+}
+JS
+}
+
 # ---------------------------------------------------------------- Node
 
 ensure_node() {
@@ -117,7 +138,7 @@ ensure_pair() {
 EOF
 
   # 로그인 탭을 먼저, 확장 화면을 마지막에 — 확장 화면이 앞에 보이게
-  open -a "Google Chrome" "https://www.milgram.io/ko" 2>/dev/null || true
+  open -a "Google Chrome" "$(milgram_page_url)" 2>/dev/null || true
   open "$CHROMUX_DIR/extension" 2>/dev/null || true
   open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
 
@@ -148,8 +169,8 @@ ensure_login() {
     return 0
   fi
 
-  warn "로그인되어 있지 않다. 로그인 페이지를 연다 — GSD 신청에 쓴 계정으로 로그인할 것"
-  open -a "Google Chrome" "https://www.milgram.io/ko" 2>/dev/null || true
+  warn "로그인되어 있지 않다. 이번 기수 페이지를 연다 — GSD 신청에 쓴 계정으로 로그인할 것"
+  open -a "Google Chrome" "$(milgram_page_url)" 2>/dev/null || true
 
   printf '  로그인을 기다리는 중'
   for _ in $(seq 1 40); do
