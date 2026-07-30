@@ -75,6 +75,19 @@ function killProfile() {
  *  로그인 흐름(구글 리다이렉트 등)을 이 URL로 되돌려 버려서 로그인이 끊긴다. */
 function openMilgramTab({ foreground = false, url = DEFAULT_MILGRAM_URL } = {}) {
   chromux(['open', ...(foreground ? [] : ['--background']), SESSION, url]);
+  // 새로 만든 프로파일은 Accept-Language가 en이라 /ko 로 들어가도 /en 으로 리다이렉트된다.
+  // 로그인 창이 영어로 뜨면 수강생이 헤매므로 한국어로 고정한다.
+  try {
+    chromux([
+      'cdp',
+      SESSION,
+      'Network.setExtraHTTPHeaders',
+      '{"headers":{"Accept-Language":"ko-KR,ko;q=0.9"}}',
+    ]);
+    chromux(['open', SESSION, url]); // 헤더를 적용한 상태로 한 번 더
+  } catch {
+    /* 헤더 설정이 안 되면 영어로라도 진행한다 */
+  }
 }
 
 /**
