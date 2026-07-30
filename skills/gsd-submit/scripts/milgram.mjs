@@ -334,32 +334,55 @@ async function myParticipant(eventId) {
  * 참가신청서의 선택형 질문에 답을 만든다.
  *
  * 옵션 문구는 기수마다 조금씩 다르다(40기는 '기타'가 'Other'였다). 그래서 payload에서 받은
- * 카테고리를 실제 옵션 목록과 맞춰 본 뒤 넣는다. 못 맞추면 '기타'류 옵션으로 떨어진다.
+ * 카테고리를 실제 옵션 목록과 맞춰 본 뒤 넣는다.
+ *
+ * **맞는 보기가 하나도 없으면 '기타'에 직접 쓴 주제를 넣는다.**
+ * 밀그램 UI는 기타를 `{value, otherText}` 로 들고 있다가 제출 직전에 **otherText 문자열만**
+ * 보낸다(`convertRegistrationAnswersForSubmit`). 그래서 여기서도 자유 입력 텍스트를
+ * 그대로 배열에 넣는다 — 사람이 손으로 낸 것과 똑같은 모양이 된다.
  */
-function pickOptions(options, wanted) {
+function pickOptions(options, wanted, fallbackTopic = '') {
   const values = options.map((o) => o.value);
   const norm = (s) => String(s).toLowerCase().replace(/[\s·・.,()&/-]/g, '');
 
   const picked = [];
+  const unmatched = [];
+
   for (const w of wanted) {
-    const exact = values.find((v) => v === w);
+    const text = String(w).trim();
+    if (!text) continue;
+
+    const exact = values.find((v) => v === text);
     if (exact) {
       picked.push(exact);
       continue;
     }
-    const loose = values.find((v) => norm(v) === norm(w) || norm(v).includes(norm(w)) || norm(w).includes(norm(v)));
+    const loose = values.find(
+      (v) => norm(v) === norm(text) || norm(v).includes(norm(text)) || norm(text).includes(norm(v)),
+    );
     if (loose) picked.push(loose);
+    else unmatched.push(text);
   }
 
   if (picked.length) return [...new Set(picked)];
 
-  // 아무것도 못 맞췄으면 '기타' 계열로
-  const other = options.find((o) => o.isOther) ?? options.at(-1);
-  return other ? [other.value] : [];
+  // 맞는 보기가 없다 — '기타' 가 있으면 직접 쓴 주제를 넣는다
+  const hasOther = options.some((o) => o.isOther);
+  if (hasOther) {
+    const topic = (unmatched[0] || fallbackTopic).trim().slice(0, 100);
+    if (topic) return [topic];
+  }
+
+  // '기타' 자체가 없는 기수면 마지막 보기로 떨어뜨린다
+  const last = options.find((o) => o.isOther) ?? options.at(-1);
+  return last ? [last.value] : [];
 }
 
-/** 참가신청서 답안을 만든다. 사람이 직접 답해야 하는 질문이 있으면 알려준다. */
-async function buildRegistrationAnswers(eventId, categories) {
+/**
+ * 참가신청서 답안을 만든다. 사람이 직접 답해야 하는 질문이 있으면 알려준다.
+ * `fallbackTopic` 은 카테고리가 아무 보기와도 안 맞을 때 '기타'에 넣을 주제다 (보통 제출물 주제).
+ */
+async function buildRegistrationAnswers(eventId, categories, fallbackTopic = '') {
   let form;
   try {
     form = await api('GET', `/events/${eventId}/registration-form/questions`);
@@ -376,7 +399,7 @@ async function buildRegistrationAnswers(eventId, categories) {
 
     if (q.type === 'choice') {
       const options = q.choice?.options ?? [];
-      const picked = pickOptions(options, categories);
+      const picked = pickOptions(options, categories, fallbackTopic);
       if (!picked.length) {
         blocked.push(q.title);
         continue;
@@ -397,7 +420,7 @@ async function buildRegistrationAnswers(eventId, categories) {
  * 제출할 수 있는 상태로 만든다. 신청을 안 했으면 대신 신청해 준다.
  * 수강생은 이미 교육에 참가한 사람이라, 신청 누락은 절차 문제일 뿐이므로 막지 않고 처리한다.
  */
-async function ensureParticipant(eventId, categories = []) {
+async function ensureParticipant(eventId, categories = [], fallbackTopic = '') {
   const me = await myParticipant(eventId);
 
   // 신청을 취소하거나 거절된 이력이 있으면 기록은 남고 상태만 바뀐다 — 이때는 다시 신청한다
@@ -431,7 +454,7 @@ async function ensureParticipant(eventId, categories = []) {
   const ticketId = event?.tickets?.[0]?.id;
   if (!ticketId) fail('이벤트에 신청 가능한 티켓이 없습니다. 운영진에게 문의하세요.');
 
-  const { answers, blocked } = await buildRegistrationAnswers(eventId, categories);
+  const { answers, blocked } = await buildRegistrationAnswers(eventId, categories, fallbackTopic);
   if (blocked.length) {
     fail(
       '참가신청서에 직접 답해야 하는 항목이 있어 대신 신청할 수 없습니다:\n' +
@@ -512,7 +535,8 @@ async function submit(payloadPath) {
 
   // 참가 신청이 안 되어 있으면 대신 신청한다 (참가신청서 답까지 payload의 categories로)
   const categories = [payload.categories ?? payload.category ?? []].flat().filter(Boolean);
-  const registration = await ensureParticipant(eventId, categories);
+  // 카테고리가 어느 보기와도 안 맞으면 '기타'에 제출물 주제를 넣는다
+  const registration = await ensureParticipant(eventId, categories, title);
 
   const state = await slotState(eventId);
 

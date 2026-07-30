@@ -165,6 +165,23 @@ POST /events/{eventId}/register
 - `hackathonParticipantType` 은 반드시 `participant` — 다른 유형은 제출물을 만들 수 없다
 - 답변 값 타입은 질문에 따라 다르다: `CHECKBOX` → `string[]`, `RADIO`·`DROP_DOWN` → `string`,
   `text` → `string`, `terms`·`checkbox` → `boolean`
+
+### '기타'는 보기 값이 아니라 직접 쓴 텍스트를 보낸다
+
+타입 정의에는 `OtherAnswer = { value, otherText }` 가 있지만 **API로 그대로 가지 않는다.**
+웹은 제출 직전에 `convertRegistrationAnswersForSubmit` 으로 `otherText` 문자열만 남긴다
+(`apps/web/features/communities/events/registration/utils/registration-answers.ts`).
+
+```json
+// 보기에 있는 것을 고른 경우
+{ "<questionId>": ["반복 업무 자동화"] }
+
+// '기타' + 직접 입력한 경우 — "기타" 라는 문자열은 어디에도 안 들어간다
+{ "<questionId>": ["반려동물 산책 기록 앱"] }
+```
+
+즉 **보기 목록에 없는 문자열 = 기타에 그 텍스트를 쓴 것**이다.
+`pickOptions` 가 이 규칙대로 만든다. 42기에 실제로 넣어 관리 화면에서 확인했다.
 - 저장된 답변은 관리 API에서 `registrationFormAnswers` 로 확인한다
   (`GET /event-managements/{eventId}/participants/{participantId}`).
   참가자 본인 조회(`/participants/me`)에는 이 필드가 없다

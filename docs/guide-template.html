@@ -227,11 +227,10 @@
   button.theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   button.theme svg { width: 15px; height: 15px; flex: none; }
 
-  /* 지금 테마에 맞는 아이콘·문구만 보인다 */
-  .t-sun, .t-moon { display: none; align-items: center; gap: 7px; }
-  :root .t-sun, :root[data-theme="dark"] .t-sun { display: inline-flex; }
-  :root[data-theme="light"] .t-sun { display: none; }
-  :root[data-theme="light"] .t-moon { display: inline-flex; }
+  /* 아이콘은 JS가 갈아끼운다. 버튼 자체는 어떤 경우에도 보이게 둔다 —
+     예전엔 :root[data-theme=...] 셀렉터로 두 아이콘을 숨겼다 보였다 했는데,
+     페이지를 감싸는 쪽에서 data-theme 을 어떻게 찍느냐에 따라 둘 다 사라질 여지가 있었다. */
+  button.theme .ico { display: inline-flex; }
 
   /* ---------------------------------------------------------------- 레이아웃 */
 
@@ -598,21 +597,12 @@
     <span class="osbar-label osnote">화면과 명령이 선택한 쪽으로 바뀝니다</span>
 
     <button type="button" class="theme" id="themeBtn" aria-label="화면 밝기 바꾸기">
-      <span class="t-sun">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="4.2"></circle>
-          <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"></path>
-        </svg>
-        밝게
-      </span>
-      <span class="t-moon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"></path>
-        </svg>
-        어둡게
-      </span>
+      <svg class="ico" id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"></circle>
+        <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"></path>
+      </svg>
+      <span id="themeLabel">밝게</span>
     </button>
   </div>
 </div>
@@ -673,7 +663,8 @@
         <div class="note ok">
           <span class="title">참가 신청을 안 했어도 됩니다</span>
           <p>신청이 안 되어 있으면 Claude가 대신 신청해 줍니다. 참가신청서의 카테고리 질문도
-            만든 프로젝트를 보고 알아서 고릅니다.</p>
+            만든 프로젝트를 보고 알아서 고릅니다.
+            보기 중에 맞는 게 없으면 <strong>기타를 고르고 주제를 직접 써넣습니다.</strong></p>
           <p>다만 <strong>이미 신청했다면 그때 쓴 계정으로 로그인</strong>해 주세요.
             다른 계정으로 하면 참가자 명단에 두 번 올라갑니다.</p>
         </div>
@@ -894,6 +885,8 @@
           <div class="faq-body">
             <p>괜찮습니다. <strong>Claude가 대신 신청합니다.</strong>
               참가신청서의 카테고리 질문도 만든 프로젝트를 보고 알아서 골라 채웁니다.</p>
+            <p>보기 중에 내 프로젝트와 맞는 게 없으면 <strong>기타를 고르고 주제를 직접 써넣습니다.</strong>
+              억지로 비슷한 항목을 고르지 않습니다.</p>
             <p>단, 승인이 필요한 기수이거나 참가신청서에 새로운 질문(약관 동의 등)이 생긴 경우에는
               Claude가 멈추고 안내합니다. 그때는 안내대로 하시면 됩니다.</p>
           </div>
@@ -958,9 +951,19 @@
   // ---- 밝기 전환 (다크 기본) --------------------------------------------
   const THEME_KEY = "gsd-guide-theme";
   const themeBtn = document.getElementById("themeBtn");
+  const themeIcon = document.getElementById("themeIcon");
+  const themeLabel = document.getElementById("themeLabel");
+
+  const SUN = '<circle cx="12" cy="12" r="4.2"></circle>'
+    + '<path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2'
+    + 'M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"></path>';
+  const MOON = '<path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"></path>';
 
   function applyTheme(theme) {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    // 아이콘·문구는 "누르면 갈 상태"를 보여준다
+    themeIcon.innerHTML = theme === "light" ? MOON : SUN;
+    themeLabel.textContent = theme === "light" ? "어둡게" : "밝게";
     try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 저장 못 해도 동작한다 */ }
   }
 
@@ -969,7 +972,8 @@
   applyTheme(savedTheme === "light" ? "light" : "dark");
 
   themeBtn.addEventListener("click", () => {
-    applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+    const now = document.documentElement.getAttribute("data-theme");
+    applyTheme(now === "light" ? "dark" : "light");
   });
 
   // ---- OS 전환 (Windows 기본) -------------------------------------------
