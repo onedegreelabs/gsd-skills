@@ -1,41 +1,61 @@
-# 웹 가이드 소스
+# 웹 가이드
 
-수강생에게 링크로 공유하는 가이드 페이지의 원본이다.
+수강생에게 링크로 공유하는 가이드 페이지다.
 
-- **발행된 페이지**: https://onedegreelabs.github.io/gsd-skills/
+- **공개 주소**: https://onedegreelabs.github.io/gsd-skills/
 - **텍스트 버전**: [../GUIDE.md](../GUIDE.md)
-
-## 구성
 
 | 파일 | 무엇 |
 |---|---|
-| `guide-template.html` | 페이지 본문. 이미지는 `{{IMG_01}}` 같은 자리표시자로 두었다 |
-| `build-guide.mjs` | 자리표시자에 이미지를 base64로 밀어넣어 최종 HTML을 만든다 |
-| `images/*.png` | 밀그램 실제 화면 캡처 원본 |
+| `index.html` | **페이지 전체.** 워딩을 고치려면 여기만 고치면 된다 |
+| `images/*.png` | 밀그램 실제 화면 캡처 |
 
-이미지를 인라인하는 이유는 발행 페이지가 외부 호스트를 못 불러오기 때문이다(CSP).
-그래서 하나짜리 HTML 파일이 되고, 용량은 600KB 정도다.
+빌드 단계가 없다. GitHub Pages가 `main` 브랜치의 이 폴더를 그대로 서빙한다.
 
-## 고치는 법
+## 워딩 고치는 법
+
+**GitHub에서 바로 고치는 게 제일 쉽다.**
+
+1. [docs/index.html 편집 화면](https://github.com/onedegreelabs/gsd-skills/edit/main/docs/index.html) 열기
+2. 글자 고치고 → `Commit changes`
+3. **1분쯤 뒤** 공개 주소에 반영된다 ([Actions 탭](https://github.com/onedegreelabs/gsd-skills/actions)에서 배포 진행 확인)
+
+로컬에서 고칠 때는 파일을 열어 고치고 push 하면 된다.
 
 ```bash
-# 1. 본문을 고친다
-$EDITOR docs/guide-template.html
-
-# 2. 캡처를 줄여서 임시 폴더에 둔다 (macOS)
-cd docs/images
-for f in *.png; do sips -s format jpeg -s formatOptions 78 --resampleWidth 1100 "$f" --out "/tmp/w_${f%.png}.jpg"; done
-
-# 3. 최종 HTML을 만든다
-cd ../.. && node docs/build-guide.mjs      # → gsd-submit-guide.html
+$EDITOR docs/index.html
+git commit -am "가이드 워딩 수정" && git push
 ```
 
-만들어진 HTML을 같은 아티팩트 URL로 다시 발행하면 링크가 유지된다.
-Claude에게 "이 URL로 가이드 다시 발행해줘" 하고 위 URL을 주면 된다.
+미리 보려면 파일을 브라우저로 바로 열면 된다 (서버 필요 없음).
+
+```bash
+open docs/index.html          # macOS
+start docs\index.html         # Windows
+```
+
+### 어디를 고쳐야 하나
+
+본문은 `<section id="s1">` ~ `<section id="s7">` 안에 순서대로 들어 있다.
+
+| 찾을 것 | 무엇 |
+|---|---|
+| `<h1>` | 큰 제목 |
+| `class="lede"` | 제목 아래 소개 문단 |
+| `class="facts"` | 상단의 알약 3개 (걸리는 시간 등) |
+| `id="bootstrap"` | **수강생이 붙여넣는 문장** — 여기를 고치면 복사 버튼 내용도 같이 바뀐다 |
+| `class="note"` | 안내 상자 (`note warn` 주황, `note ok` 초록) |
+| `<details>` | 문제 해결 FAQ 접기 항목 |
+| `data-os="win"` / `data-os="mac"` | OS별로 다르게 보이는 부분 |
+
+목차(`nav.rail`)의 항목 이름은 각 섹션 `<h2>` 와 **따로 적혀 있으니 같이 고친다.**
+
+> 같은 내용이 [../GUIDE.md](../GUIDE.md) 에도 있다. 텍스트 버전이 필요 없으면
+> 그 파일은 지우고 이 페이지 링크만 남겨도 된다.
 
 ## 화면 캡처를 다시 찍을 때
 
-**실제 수강생 이름이 찍히지 않게 한다.** 공개 저장소이고, 발행 페이지도 공유된다.
+**실제 수강생 이름이 찍히지 않게 한다.** 공개 저장소이고 페이지도 공개다.
 샘플 제출물(`홍길동 (샘플)`)만 있는 기수 페이지에서 찍는 것이 안전하다.
 
 ```bash
@@ -48,3 +68,5 @@ node skills/gsd-submit/scripts/capture.mjs "<url>" docs/images/03-builds-list.pn
 CHROMUX_PROFILE=gsd chromux open g "<url>"
 CHROMUX_PROFILE=gsd chromux screenshot g docs/images/04-submission-detail.png --region 64 0 1216 900 --space css
 ```
+
+파일 이름을 그대로 덮어쓰면 페이지는 손대지 않아도 캡처만 갱신된다.
