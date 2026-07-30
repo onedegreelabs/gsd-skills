@@ -1,42 +1,21 @@
 #!/usr/bin/env bash
-# 처음 쓰는 맥을 준비시킨다. 자동으로 되는 건 자동으로 하고,
-# 사람만 할 수 있는 두 가지(Chrome 확장 로드, 밀그램 로그인)는 화면을 열어주고 기다린다.
+# 처음 쓰는 맥을 준비시킨다. 설치는 전부 자동이고,
+# 사람이 할 일은 마지막에 열리는 Chrome 창에서 밀그램 로그인 한 번뿐이다.
 #
 #   scripts/install.sh              전체
 #   scripts/install.sh chromux      chromux 설치까지만
-#   scripts/install.sh pair         브릿지 연결(확장 로드)까지만
-#   scripts/install.sh login        밀그램 로그인 대기만
+#   scripts/install.sh login        밀그램 로그인만
 #
-# 오래 걸린다(확장 로드를 기다리는 동안 최대 3분). 넉넉한 타임아웃으로 실행할 것.
+# 로그인을 기다리는 동안 최대 3분 걸린다. 넉넉한 타임아웃으로 실행할 것.
 set -uo pipefail
 
 CHROMUX_DIR="${CHROMUX_DIR:-$HOME/team-attention/chromux}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STEP="${1:-all}"
 
 info() { printf '\n▶ %s\n' "$1"; }
 done_() { printf '  ✓ %s\n' "$1"; }
 warn() { printf '  ! %s\n' "$1"; }
-
-# 로그인시켜 둘 밀그램 페이지 — 오늘(KST) 열리는 기수 이벤트가 있으면 그 페이지,
-# 없으면 다음 기수, 그것도 없으면 커뮤니티 이벤트 목록. 공개 API라 로그인이 필요 없다.
-milgram_page_url() {
-  node --input-type=module - <<'JS' 2>/dev/null || echo "https://www.milgram.io/ko/community/getshipdoneclub/events"
-const COMMUNITY = 'c91c74be-c428-4293-bb6e-5024f4e97241';
-const fallback = 'https://www.milgram.io/ko/community/getshipdoneclub/events';
-try {
-  const res = await fetch(`https://api.milgram.io/communities/${COMMUNITY}/events?limit=100`);
-  const events = (await res.json())?.data?.data ?? [];
-  const kstDay = (d) => new Date(new Date(d).getTime() + 9 * 3600e3).toISOString().slice(0, 10);
-  const today = kstDay(Date.now());
-  const dated = events.filter((e) => e.startAt).map((e) => ({ id: e.id, day: kstDay(e.startAt) }));
-  const pick = dated.find((e) => e.day === today)
-    ?? dated.filter((e) => e.day > today).sort((a, b) => a.day.localeCompare(b.day))[0];
-  console.log(pick ? `https://www.milgram.io/ko/event/${pick.id}` : fallback);
-} catch {
-  console.log(fallback);
-}
-JS
-}
 
 # ---------------------------------------------------------------- Node
 
@@ -112,80 +91,13 @@ ensure_chromux() {
   return 1
 }
 
-# ---------------------------------------------------------------- live 브릿지
-
-ensure_pair() {
-  info "내 Chrome에 연결 (live 브릿지)"
-  if chromux tabs >/dev/null 2>&1; then
-    done_ "이미 연결됨"
-    return 0
-  fi
-
-  chromux pair >/dev/null 2>&1 &
-
-  cat <<EOF
-
-  ── 여기만 직접 해야 한다 (30초) ────────────────────────────
-  Chrome 확장 관리 화면과 확장 폴더, 밀그램 페이지를 열어뒀다.
-
-   1. 확장 화면 오른쪽 위 [개발자 모드] 를 켠다
-   2. [압축해제된 확장 프로그램을 로드합니다] 를 누른다
-   3. 방금 열린 Finder 창의 extension 폴더를 고른다
-   4. 내친김에 밀그램 탭에서 로그인까지 해둔다
-      (GSD 신청에 쓴 계정으로)
-
-  ─────────────────────────────────────────────────────────
-EOF
-
-  # 로그인 탭을 먼저, 확장 화면을 마지막에 — 확장 화면이 앞에 보이게
-  open -a "Google Chrome" "$(milgram_page_url)" 2>/dev/null || true
-  open "$CHROMUX_DIR/extension" 2>/dev/null || true
-  open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
-
-  printf '  연결을 기다리는 중'
-  for _ in $(seq 1 60); do
-    if chromux tabs >/dev/null 2>&1; then
-      printf '\n'
-      done_ "연결됨"
-      return 0
-    fi
-    printf '.'
-    sleep 3
-  done
-
-  printf '\n'
-  warn "3분 안에 연결되지 않았다. 확장 팝업이 Connected 인지 확인하고 다시 실행할 것"
-  return 1
-}
-
 # ---------------------------------------------------------------- 밀그램 로그인
 
 ensure_login() {
   info "밀그램 로그인 확인"
-  local me
-  me=$(node "$(dirname "$0")/milgram.mjs" whoami 2>/dev/null)
-  if printf '%s' "$me" | grep -q '"email"'; then
-    done_ "$(printf '%s' "$me" | sed -n 's/.*"email": *"\([^"]*\)".*/\1/p')"
-    return 0
-  fi
-
-  warn "로그인되어 있지 않다. 이번 기수 페이지를 연다 — GSD 신청에 쓴 계정으로 로그인할 것"
-  open -a "Google Chrome" "$(milgram_page_url)" 2>/dev/null || true
-
-  printf '  로그인을 기다리는 중'
-  for _ in $(seq 1 40); do
-    me=$(node "$(dirname "$0")/milgram.mjs" whoami 2>/dev/null)
-    if printf '%s' "$me" | grep -q '"email"'; then
-      printf '\n'
-      done_ "$(printf '%s' "$me" | sed -n 's/.*"email": *"\([^"]*\)".*/\1/p')"
-      return 0
-    fi
-    printf '.'
-    sleep 3
-  done
-
-  printf '\n'
-  warn "로그인이 확인되지 않았다. 로그인한 뒤 다시 실행할 것"
+  # 로그인이 안 되어 있으면 전용 Chrome 창을 앞에 띄우고 기다린다 (milgram.mjs login)
+  node "$SCRIPT_DIR/milgram.mjs" login && return 0
+  warn "로그인이 확인되지 않았다. 다시 실행할 것: scripts/install.sh login"
   return 1
 }
 
@@ -193,10 +105,9 @@ ensure_login() {
 
 case "$STEP" in
   chromux) ensure_node && ensure_chrome && ensure_chromux ;;
-  pair)    ensure_pair ;;
   login)   ensure_login ;;
-  all)     ensure_node && ensure_chrome && ensure_chromux && ensure_pair && ensure_login ;;
-  *)       echo "usage: install.sh [all|chromux|pair|login]" >&2; exit 1 ;;
+  all)     ensure_node && ensure_chrome && ensure_chromux && ensure_login ;;
+  *)       echo "usage: install.sh [all|chromux|login]" >&2; exit 1 ;;
 esac
 
 status=$?

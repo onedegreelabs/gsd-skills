@@ -33,17 +33,16 @@ description: GSD(Get Ship Done)에서 오늘 만든 프로젝트를 밀그램(mi
 scripts/preflight.sh
 ```
 
-Node 22+ · Chrome · chromux · live 브릿지 · 밀그램 로그인 다섯 가지를 본다.
+Node 22+ · Chrome · chromux · 밀그램 로그인 네 가지를 본다.
 `NEED` 가 있으면 바로 설치를 돌린다. **묻지 말고 실행한다** — 수강생은 무엇을 깔아야 하는지 모른다.
 
 ```bash
 scripts/install.sh          # 넉넉한 타임아웃으로 (최대 5분)
 ```
 
-Node·chromux 설치는 자동이다. 사람이 해야 하는 건 딱 두 가지이고, 스크립트가 화면을 열어주고 기다린다.
-
-- **Chrome 확장 로드** — 에이전트는 확장을 설치할 수 없다
-- **밀그램 로그인** — GSD 신청에 쓴 그 계정으로
+설치는 전부 자동이다. 사람이 해야 하는 건 **밀그램 로그인 한 번**뿐이고,
+스크립트가 제출 전용 Chrome 창을 띄워 이번 기수 페이지를 열고 기다린다.
+로그인은 **GSD 신청에 쓴 그 계정**으로 해야 한다. 세션이 프로파일에 남아 다음부터는 로그인도 없다.
 
 막히면 [references/setup.md](references/setup.md)를 본다.
 

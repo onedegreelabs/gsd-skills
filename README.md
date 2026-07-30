@@ -36,18 +36,16 @@ git clone https://github.com/onedegreelabs/gsd-skills ~/gsd-skills && mkdir -p ~
 
 ## 처음 쓸 때
 
-브라우저를 통해 밀그램에 접근하므로 **최초 1회 세팅**이 필요하다. 5분이면 끝난다.
+**최초 1회 세팅**이 필요하다. 설치는 전부 자동이고,
+직접 할 일은 마지막에 열리는 Chrome 창에서 **밀그램 로그인 한 번**뿐이다.
 스킬이 알아서 점검하고 안내하지만, 미리 해두고 싶으면 직접 실행해도 된다.
 
 ```bash
 ~/.claude/skills/gsd-submit/scripts/install.sh
 ```
 
-Node와 도구 설치는 자동이고, **Chrome 확장 로드**와 **밀그램 로그인** 두 가지만 직접 해야 한다.
-스크립트가 필요한 창을 다 열어주고 기다린다. 자세한 내용은
-[setup.md](skills/gsd-submit/references/setup.md).
-
-밀그램은 **GSD 참가 신청에 쓴 계정**으로 로그인되어 있어야 한다.
+로그인은 **GSD 참가 신청에 쓴 계정**으로 해야 한다. 한 번 하면 다음 기수부터는 로그인도 없다.
+자세한 내용은 [setup.md](skills/gsd-submit/references/setup.md).
 
 ## 자주 묻는 것
 

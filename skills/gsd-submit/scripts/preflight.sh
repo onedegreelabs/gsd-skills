@@ -4,7 +4,7 @@
 #   scripts/preflight.sh
 #
 # 각 항목을 OK / NEED 로 출력하고, NEED가 하나라도 있으면 종료 코드 1을 낸다.
-# 해결은 scripts/install.sh 가 자동으로 한다 (확장 로드와 로그인은 사람이 해야 한다).
+# 해결은 scripts/install.sh 가 자동으로 한다 (밀그램 로그인만 사람이 한다).
 set -uo pipefail
 
 ok=0; need=0
@@ -39,23 +39,16 @@ else
   say_need "chromux 미설치 — scripts/install.sh 가 설치한다"
 fi
 
-echo "[4] live 브릿지 (내 Chrome에 연결)"
-if command -v chromux >/dev/null 2>&1 && chromux tabs >/dev/null 2>&1; then
-  say_ok "연결됨"
-else
-  say_need "미연결 — Chrome 확장을 직접 로드해야 한다 (scripts/install.sh 가 안내한다)"
-fi
-
-echo "[5] 밀그램 로그인"
-if command -v chromux >/dev/null 2>&1 && chromux tabs >/dev/null 2>&1; then
+echo "[4] 밀그램 로그인"
+if command -v chromux >/dev/null 2>&1; then
   me=$(node "$(dirname "$0")/milgram.mjs" whoami 2>/dev/null)
   if printf '%s' "$me" | grep -q '"email"'; then
     say_ok "$(printf '%s' "$me" | sed -n 's/.*"email": *"\([^"]*\)".*/\1/p')"
   else
-    say_need "로그인 안 됨 — Chrome에서 https://www.milgram.io 에 로그인"
+    say_need "로그인 안 됨 — scripts/install.sh login 이 로그인 창을 띄운다"
   fi
 else
-  say_need "live 브릿지가 없어 확인 불가 (4번 먼저 해결)"
+  say_need "chromux가 없어 확인 불가 (3번 먼저 해결)"
 fi
 
 echo

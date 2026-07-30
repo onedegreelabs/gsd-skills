@@ -4,14 +4,18 @@
 // 밀그램에 공개 API 문서는 없지만 프론트가 api.milgram.io REST를 그대로 쓴다.
 // 이 스크립트는 UI를 클릭하지 않고 그 API를 직접 호출한다. 클릭 자동화보다 훨씬 덜 깨진다.
 //
-// 인증: chromux live로 사용자의 실제 Chrome에 붙어 /api/auth/session 에서 accessToken을 읽는다.
+// 인증: chromux 격리 프로파일(`gsd`)로 전용 Chrome을 띄워 /api/auth/session 에서
+//       accessToken을 읽는다. 로그인이 안 되어 있으면 창을 앞에 띄우고 로그인을 기다린다.
+//       로그인 세션은 프로파일에 남으므로 로그인은 사실상 한 번이다.
+//       사용자의 평소 Chrome은 건드리지 않고, 확장 설치도 필요 없다.
 //       토큰은 이 프로세스의 메모리에만 있고 파일에 쓰거나 출력하지 않는다.
 //
 // 명령:
-//   whoami                     로그인 계정 확인
+//   login                      전용 창을 띄워 밀그램 로그인 (최초 1회)
+//   whoami                     로그인 계정 확인 (로그인 안 돼 있으면 실패만 알림)
 //   today                      오늘 열린 GSD 이벤트 찾기
 //   status [eventId]           내 제출물 상태 · 빈 슬롯 · 마감 시각
-//   submit <payload.json>      등록(또는 갱신) 후 제출까지
+//   submit <payload.json>      등록(또는 갱신) 후 제출까지. 로그인 필요 시 창을 띄운다
 //   delete <eventId> <buildId> 등록 취소 (테스트 정리용)
 //   get <path>                 임의 GET (디버깅)
 
@@ -23,15 +27,17 @@ import { randomUUID } from 'node:crypto';
 import { markdownToDescription } from './md-to-tiptap.mjs';
 
 const API = 'https://api.milgram.io';
-const SESSION = 'gsd-submit';
+const PROFILE = 'gsd'; // 전용 Chrome 프로파일 — 로그인 세션이 여기 남는다
+const SESSION = 'auth';
 const COMMUNITY_ID = 'c91c74be-c428-4293-bb6e-5024f4e97241'; // GSD (Get Ship Done) Club
 const MAX_IMAGES = 10;
+const LOGIN_WAIT_SECONDS = 180;
 
 // ---------------------------------------------------------------- chromux
 
 function chromux(args, { quiet = true } = {}) {
   return execFileSync('chromux', args, {
-    env: { ...process.env, CHROMUX_PROFILE: 'live' },
+    env: { ...process.env, CHROMUX_PROFILE: PROFILE },
     encoding: 'utf8',
     stdio: quiet ? ['ignore', 'pipe', 'pipe'] : 'inherit',
   });
@@ -43,75 +49,28 @@ function parseJsonOutput(out) {
   return JSON.parse(out.slice(start));
 }
 
-/** 열려 있는 밀그램 탭의 id. 없으면 null. */
-function findMilgramTabId() {
-  let out;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** 전용 프로파일을 띄운다. 이미 떠 있으면 그대로 쓴다. */
+function launchProfile({ headless }) {
   try {
-    out = chromux(['tabs']);
+    chromux(['launch', PROFILE, ...(headless ? ['--headless'] : [])]);
   } catch {
-    fail(
-      'Chrome에 연결되지 않았습니다 (chromux live 브릿지).\n' +
-        'scripts/install.sh pair 를 실행해 확장을 연결하세요.',
-    );
-  }
-  for (const line of out.split('\n')) {
-    // "   2120041162  제목   https://www.milgram.io/..." — 맨 끝이 URL이다
-    const m = line.match(/^\s*\*?\s*(\d+)\s+.*\s(https?:\/\/\S+)\s*$/);
-    if (m && /(^|\.)milgram\.io/.test(new URL(m[2]).hostname)) return m[1];
-  }
-  return null;
-}
-
-/**
- * 밀그램 탭에 붙는다. 열려 있으면 그 탭에 붙고, 없으면 백그라운드 탭을 새로 연다.
- *
- * live 모드에서 이미 attach된 세션은 `open <세션> <url>` 로 이동하지 않는다.
- * 엉뚱한 탭에 붙어 있던 상태가 그대로 남으므로 먼저 detach 한다
- * (live에서 close는 탭을 닫지 않고 떼어내기만 한다).
- */
-function attachMilgramTab() {
-  const isMilgram = (url) => {
-    try {
-      return /(^|\.)milgram\.io$/.test(new URL(url).hostname);
-    } catch {
-      return false;
-    }
-  };
-
-  const detach = () => {
-    try {
-      chromux(['close', SESSION]);
-    } catch {
-      /* 붙어 있지 않으면 그만 */
-    }
-  };
-
-  detach();
-
-  const tabId = findMilgramTabId();
-  if (tabId) {
-    try {
-      const r = parseJsonOutput(chromux(['open', SESSION, '--tab', tabId]));
-      if (isMilgram(r.url)) return;
-    } catch {
-      /* 탭이 방금 닫혔으면 아래로 */
-    }
-    detach();
-  }
-
-  const opened = parseJsonOutput(chromux(['open', '--background', SESSION, 'https://www.milgram.io/ko']));
-  if (!isMilgram(opened.url)) {
-    fail(`밀그램 탭을 열지 못했습니다 (현재: ${opened.url}). Chrome을 확인한 뒤 다시 실행하세요.`);
+    /* 이미 실행 중이면 에러가 나도 그대로 쓴다 */
   }
 }
 
-let cachedAuth = null;
+function killProfile() {
+  try {
+    chromux(['kill', PROFILE]);
+  } catch {
+    /* 안 떠 있으면 그만 */
+  }
+}
 
-/** { token, user } — 프로세스 메모리에만 둔다. */
-function auth() {
-  if (cachedAuth) return cachedAuth;
-
-  attachMilgramTab();
+/** 밀그램 탭에서 세션을 읽는다. { token, user } — 로그인 전이면 token: null */
+function readMilgramSession({ foreground = false, url = 'https://www.milgram.io/ko' } = {}) {
+  chromux(['open', ...(foreground ? [] : ['--background']), SESSION, url]);
 
   const file = join(tmpdir(), `gsd-auth-${randomUUID()}.js`);
   writeFileSync(
@@ -122,10 +81,8 @@ function auth() {
        user: s && s.user ? { id: s.user.id, name: s.user.name, email: s.user.email } : null,
      };`,
   );
-
-  let result;
   try {
-    result = parseJsonOutput(chromux(['run', SESSION, '--page-file', file]));
+    return parseJsonOutput(chromux(['run', SESSION, '--page-file', file]));
   } finally {
     try {
       unlinkSync(file);
@@ -133,22 +90,98 @@ function auth() {
       /* 지워지지 않아도 진행 */
     }
   }
+}
 
-  if (!result.token) {
+/** 로그인시켜 둘 페이지 — 오늘 기수 이벤트가 있으면 그 페이지 (공개 API, 로그인 불필요) */
+async function loginPageUrl() {
+  const fallback = 'https://www.milgram.io/ko/community/getshipdoneclub/events';
+  try {
+    const res = await fetch(`${API}/communities/${COMMUNITY_ID}/events?limit=100`);
+    const events = (await res.json())?.data?.data ?? [];
+    const today = kstDateString(new Date());
+    const dated = events
+      .filter((e) => e.startAt)
+      .map((e) => ({ id: e.id, day: kstDateString(new Date(e.startAt)) }));
+    const pick =
+      dated.find((e) => e.day === today) ??
+      dated.filter((e) => e.day > today).sort((a, b) => a.day.localeCompare(b.day))[0];
+    return pick ? `https://www.milgram.io/ko/event/${pick.id}` : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+let cachedAuth = null;
+
+/**
+ * { token, user } — 프로세스 메모리에만 둔다.
+ *
+ * interactive: 로그인이 안 되어 있을 때 창을 앞에 띄우고 로그인을 기다릴지.
+ * 조용히 확인만 할 곳(preflight의 whoami)은 false로 부른다.
+ */
+async function auth({ interactive = true } = {}) {
+  if (cachedAuth) return cachedAuth;
+
+  // 1) 조용히 확인 — 이미 로그인돼 있으면 창을 띄울 필요가 없다
+  launchProfile({ headless: true });
+  let result;
+  try {
+    result = readMilgramSession();
+  } catch (e) {
+    // 프로파일이 headed로 이미 떠 있는 등 상태가 꼬였으면 리셋 후 한 번 더
+    killProfile();
+    launchProfile({ headless: true });
+    result = readMilgramSession();
+  }
+  if (result.token) {
+    cachedAuth = result;
+    return cachedAuth;
+  }
+
+  if (!interactive) {
     fail(
       '밀그램에 로그인되어 있지 않습니다.\n' +
-        'Chrome에서 https://www.milgram.io 에 로그인한 뒤 다시 실행하세요.',
+        'node scripts/milgram.mjs login 을 실행하면 로그인 창이 열립니다.',
     );
   }
 
-  cachedAuth = result;
-  return cachedAuth;
+  // 2) 로그인 창을 앞에 띄우고 기다린다
+  killProfile(); // headless를 내리고 창이 보이게 다시 띄운다
+  launchProfile({ headless: false });
+  const url = await loginPageUrl();
+
+  process.stderr.write(
+    '\n── 밀그램 로그인이 필요합니다 ──────────────────────\n' +
+      '방금 열린 Chrome 창에서 로그인해 주세요.\n' +
+      'GSD 참가 신청에 쓴 계정으로 로그인해야 합니다.\n' +
+      '(구글 로그인이 막히면 이메일 로그인을 이용하세요)\n' +
+      '──────────────────────────────────────────────\n로그인을 기다리는 중',
+  );
+
+  readMilgramSession({ foreground: true, url });
+  for (let i = 0; i < LOGIN_WAIT_SECONDS / 3; i++) {
+    await sleep(3000);
+    process.stderr.write('.');
+    try {
+      result = readMilgramSession({ url });
+      if (result.token) {
+        process.stderr.write(`\n로그인 확인: ${result.user?.email ?? ''}\n`);
+        cachedAuth = result;
+        return cachedAuth;
+      }
+    } catch {
+      /* 페이지 이동 중이면 다음 턴에 다시 */
+    }
+  }
+
+  process.stderr.write('\n');
+  fail(`${LOGIN_WAIT_SECONDS / 60}분 안에 로그인이 확인되지 않았습니다. 로그인한 뒤 다시 실행하세요.`);
 }
 
 // ---------------------------------------------------------------- API
 
 async function api(method, path, body) {
-  const { token } = auth();
+  const { token } = await auth();
   const res = await fetch(`${API}${path}`, {
     method,
     headers: {
@@ -215,7 +248,7 @@ async function uploadFile(path) {
   const size = statSync(abs).size;
   if (size > 20 * 1024 * 1024) fail(`이미지가 너무 큽니다 (${(size / 1e6).toFixed(1)}MB): ${abs}`);
 
-  const { token } = auth();
+  const { token } = await auth();
   const type = MIME[extname(abs).toLowerCase()] ?? 'application/octet-stream';
   const form = new FormData();
   form.append('file', new Blob([readFileSync(abs)], { type }), basename(abs));
@@ -389,8 +422,14 @@ const [, , cmd, ...rest] = process.argv;
 
 try {
   switch (cmd) {
+    case 'login': {
+      const { user } = await auth({ interactive: true });
+      console.log(JSON.stringify(user, null, 2));
+      break;
+    }
     case 'whoami': {
-      console.log(JSON.stringify(auth().user, null, 2));
+      const { user } = await auth({ interactive: false });
+      console.log(JSON.stringify(user, null, 2));
       break;
     }
     case 'today': {
@@ -457,7 +496,7 @@ try {
       break;
     }
     default:
-      fail('usage: milgram.mjs whoami|today|status|submit|delete|get');
+      fail('usage: milgram.mjs login|whoami|today|status|submit|delete|get');
   }
 } catch (error) {
   fail(error.message);
