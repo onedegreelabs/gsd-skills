@@ -5,34 +5,44 @@
 로그인 세션은 남아 있으므로 다음 기수부터는 아무것도 안 해도 된다.
 
 ```bash
-scripts/install.sh          # 전부 알아서 한다. 마지막에 로그인 창이 열린다
+node scripts/install.mjs          # 전부 알아서 한다. 마지막에 로그인 창이 열린다
 ```
 
 무엇이 빠졌는지만 보려면:
 
 ```bash
-scripts/preflight.sh
+node scripts/preflight.mjs
 ```
 
 ---
 
+## Windows·macOS 모두에서 돈다
+
+스크립트는 전부 Node(`.mjs`)로 되어 있다. 셸 스크립트(`.sh`)를 쓰지 않는 이유는
+Windows에서 Git for Windows가 없으면 Claude Code가 PowerShell을 쓰기 때문에
+`.sh` 가 아예 실행되지 않기 때문이다. Node는 chromux 때문에 어차피 필요하다.
+
+OS별로 다른 부분(Chrome 경로, URL 열기, 폴더 열기)은 `scripts/platform.mjs` 한 곳에 모여 있다.
+
 ## 자동으로 되는 것
 
-**1. Node.js 22+** — Homebrew나 nvm으로 설치한다. 자동 설치가 실패하면
-[nodejs.org](https://nodejs.org) 에서 LTS 버전을 받아 설치하고 터미널을 새로 연다.
+**1. Google Chrome** — 없으면 설치 페이지가 열린다. [google.com/chrome](https://www.google.com/chrome/)
 
-**2. Google Chrome** — 없으면 설치 페이지가 열린다. [google.com/chrome](https://www.google.com/chrome/)
+**2. chromux** — Chrome을 조작하는 도구. 알아서 받아 설치한다.
+`npm install -g` 에서 권한 오류가 나면 관리자 권한 없이 설치되는 Node를 쓰는 게 가장 쉽다
+(Windows는 [nodejs.org](https://nodejs.org) 설치본, macOS는 nvm이나 Homebrew).
 
-**3. chromux** — Chrome을 조작하는 도구. 알아서 받아 설치한다.
-`npm install -g` 에서 권한 오류가 나면 시스템 Node를 쓰고 있다는 뜻인데,
-nvm으로 설치한 Node를 쓰면 권한 문제가 없다.
+> **Node.js 22+ 는 미리 있어야 한다.** 스크립트 자체가 Node로 돌기 때문이다.
+> 없으면 [nodejs.org](https://nodejs.org) 에서 LTS를 설치하고 **터미널을 새로 연 뒤** 다시 실행한다.
+> Windows는 `winget install OpenJS.NodeJS.LTS`, macOS는 `brew install node` 도 된다.
 
 ## 사람이 하는 것 — 밀그램 로그인 (1번)
 
 설치가 끝나면 Chrome 창이 하나 열리고 이번 기수 이벤트 페이지가 뜬다.
 거기서 밀그램에 로그인하면 끝이다.
 
-- **GSD 참가 신청에 쓴 그 계정**으로 로그인해야 한다. 다른 계정이면 제출이 거부된다
+- **이미 GSD 참가 신청을 했다면 그때 쓴 계정**으로 로그인한다.
+  신청을 안 했으면 아무 계정이나 괜찮다 — 참가 신청까지 스킬이 대신 한다
 - 이 창은 제출 전용 프로파일이라 평소 브라우저의 로그인과 무관하다
 - 구글 로그인이 "안전하지 않은 브라우저" 라며 막히면 **이메일 로그인**을 쓴다
 

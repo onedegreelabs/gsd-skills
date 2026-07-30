@@ -3,8 +3,8 @@
 제출물에는 **사진이 최소 1장** 있어야 저장된다 (최대 10장). 첫 장이 현황판 목록에 뜨는 얼굴이다.
 
 ```bash
-scripts/capture.sh <url> out/shot1.png [--wait "화면에 뜨는 문구"] [--full]
-scripts/capture.sh --cleanup        # 다 찍고 나서 한 번
+node scripts/capture.mjs <url> out/shot1.png [--wait "화면에 뜨는 문구"] [--full]
+node scripts/capture.mjs --cleanup        # 다 찍고 나서 한 번
 ```
 
 수강생의 실제 Chrome이 아니라 `gsd-shot` 이라는 격리 프로파일을 **헤드리스**로 띄운다.
@@ -28,7 +28,7 @@ dev 서버를 띄우고 `http://localhost:3000` 을 찍는다.
 
 ```bash
 npm run dev &        # 백그라운드로
-scripts/capture.sh http://localhost:3000 out/shot1.png --wait "핵심 문구"
+node scripts/capture.mjs http://localhost:3000 out/shot1.png --wait "핵심 문구"
 ```
 
 찍고 나면 서버를 정리한다. 배포 URL이 없으므로 제출물 `links` 는 비운다.
@@ -44,11 +44,24 @@ GSD 제출물의 절반쯤은 웹이 아니다. 이때는 **결과물을 찍는�
 | 슬랙·메일 봇 | 실제로 도착한 메시지 |
 | 데이터 수집기 | 수집된 데이터를 띄운 화면 |
 
-공개 URL이 있으면 `capture.sh` 로 찍고, 화면에만 있으면 macOS 기본 명령으로 찍는다.
+공개 URL이 있으면 `capture.mjs` 로 찍고, 화면에만 있으면 OS 기본 기능으로 찍는다.
+
+**macOS**
 
 ```bash
-screencapture -x out/shot1.png            # 전체 화면 (조용히)
+screencapture -x out/shot1.png                   # 전체 화면 (조용히)
 screencapture -x -R 0,0,1440,900 out/shot1.png   # 영역 지정
+```
+
+**Windows** — 수강생에게 `Win + Shift + S` (캡처 도구)로 찍어 파일로 저장하게 하고 경로를 받는다.
+PowerShell로 전체 화면을 바로 저장할 수도 있다.
+
+```powershell
+Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+$b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+[System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+$bmp.Save("$PWD\out\shot1.png")
 ```
 
 **개인정보가 찍히지 않는지 본다.** 이 이미지는 이벤트 페이지에 공개된다.
@@ -57,23 +70,26 @@ screencapture -x -R 0,0,1440,900 out/shot1.png   # 영역 지정
 
 ### 아무것도 찍을 게 없을 때
 
-마지막 수단으로 요약 카드를 만든다. HTML을 헤드리스 Chrome으로 렌더한다.
+마지막 수단으로 요약 카드를 만든다. HTML 파일을 하나 쓰고 `capture.mjs` 로 찍으면
+OS에 상관없이 된다 (Chrome 경로를 직접 쓰지 않는다).
 
-```bash
-cat > out/card.html <<'HTML'
-<html><body style="margin:0;width:1200px;height:630px;display:flex;flex-direction:column;
+`out/card.html` 을 만들고:
+
+```html
+<body style="margin:0;width:1200px;height:630px;display:flex;flex-direction:column;
   justify-content:center;padding:80px;box-sizing:border-box;
-  font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;
+  font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff">
   <div style="font-size:20px;opacity:.6;letter-spacing:2px">GSD 42기</div>
   <div style="font-size:64px;font-weight:800;margin:16px 0">서비스 이름</div>
   <div style="font-size:28px;opacity:.8;line-height:1.5">한 줄 소개</div>
-</body></html>
-HTML
+</body>
+```
 
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  --headless --disable-gpu --screenshot=out/shot1.png --window-size=1200,630 \
-  "file://$PWD/out/card.html"
+절대 경로를 `file://` URL로 넘긴다. Windows는 `file:///C:/...` 형태다.
+
+```bash
+node scripts/capture.mjs "file:///절대/경로/out/card.html" out/shot1.png
 ```
 
 카드만 올리는 건 마지막 선택지다. 실제 결과물 사진이 언제나 낫다.

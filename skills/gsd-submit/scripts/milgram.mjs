@@ -27,6 +27,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname, basename, extname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { markdownToDescription } from './md-to-tiptap.mjs';
+import { IS_WINDOWS } from './platform.mjs';
 
 const API = 'https://api.milgram.io';
 const PROFILE = 'gsd'; // 전용 Chrome 프로파일 — 로그인 세션이 여기 남는다
@@ -41,7 +42,9 @@ const DEFAULT_MILGRAM_URL = 'https://www.milgram.io/ko/community/getshipdoneclub
 // ---------------------------------------------------------------- chromux
 
 function chromux(args, { quiet = true } = {}) {
-  return execFileSync('chromux', args, {
+  // Windows에서 chromux는 .cmd 래퍼라 cmd /c 를 거쳐야 한다 (platform.mjs 의 run 주석 참고)
+  const [bin, binArgs] = IS_WINDOWS ? ['cmd', ['/c', 'chromux', ...args]] : ['chromux', args];
+  return execFileSync(bin, binArgs, {
     env: { ...process.env, CHROMUX_PROFILE: PROFILE },
     encoding: 'utf8',
     stdio: quiet ? ['ignore', 'pipe', 'pipe'] : 'inherit',

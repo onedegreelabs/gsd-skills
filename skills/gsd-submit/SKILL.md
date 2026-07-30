@@ -35,14 +35,14 @@ description: GSD(Get Ship Done)에서 오늘 만든 프로젝트를 밀그램(mi
 ## 0. 사전 점검
 
 ```bash
-scripts/preflight.sh
+node scripts/preflight.mjs
 ```
 
 Node 22+ · Chrome · chromux · 밀그램 로그인 네 가지를 본다.
 `NEED` 가 있으면 바로 설치를 돌린다. **묻지 말고 실행한다** — 수강생은 무엇을 깔아야 하는지 모른다.
 
 ```bash
-scripts/install.sh          # 넉넉한 타임아웃으로 (최대 5분)
+node scripts/install.mjs          # 넉넉한 타임아웃으로 (최대 5분)
 ```
 
 설치는 전부 자동이다. 사람이 해야 하는 건 **밀그램 로그인 한 번**뿐이고,
@@ -56,8 +56,8 @@ scripts/install.sh          # 넉넉한 타임아웃으로 (최대 5분)
 세 곳을 읽는다. **하나만 읽고 쓰지 않는다** — 코드에는 의도가 없고, 대화에는 결과가 없다.
 
 ```bash
-scripts/session-digest.mjs                # 현재 폴더의 오늘 작업 기록
-scripts/session-digest.mjs ~/projects/x   # 다른 폴더를 볼 때
+node scripts/session-digest.mjs                # 현재 폴더의 오늘 작업 기록
+node scripts/session-digest.mjs ~/projects/x   # 다른 폴더를 볼 때
 ```
 
 | 어디서 | 무엇을 얻나 |
@@ -73,8 +73,8 @@ scripts/session-digest.mjs ~/projects/x   # 다른 폴더를 볼 때
 제출물에는 **사진이 최소 1장 필수**다 (최대 10장). 첫 장이 목록에 뜨는 대표 이미지가 된다.
 
 ```bash
-scripts/capture.sh <url> out/shot1.png [--wait "화면 문구"] [--full]
-scripts/capture.sh --cleanup            # 다 찍은 뒤 한 번
+node scripts/capture.mjs <url> out/shot1.png [--wait "화면 문구"] [--full]
+node scripts/capture.mjs --cleanup            # 다 찍은 뒤 한 번
 ```
 
 수강생의 실제 Chrome이 아니라 격리 프로파일을 헤드리스로 띄우므로 창이 뜨지 않는다.
@@ -154,8 +154,7 @@ node scripts/milgram.mjs whoami     # 밀그램 프로필 이름을 그대로 �
 ```
 
 `teamName` 을 비워두면 **프로필 이름이 자동으로 들어간다.** 그게 가장 안전하다.
-다른 값을 넣으면 경고가 뜨지만 막지는 않는다 — 프로필 이름이 영문이라 한글로 바꾸고 싶다거나,
-팀으로 참가해 `김채은·박민수` 로 적는 경우가 있다.
+다른 값을 넣으면 경고가 뜨지만 막지는 않는다 (프로필 이름이 영문이라 한글로 바꾸는 경우 등).
 
 ### 참가 신청은 알아서 처리된다
 

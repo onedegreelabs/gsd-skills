@@ -18,13 +18,38 @@ const daysIdx = args.indexOf('--days');
 const days = daysIdx >= 0 ? Number(args[daysIdx + 1]) : 1;
 const projectPath = resolve(args.find((a) => !a.startsWith('--') && a !== String(days)) ?? process.cwd());
 
-// Claude Code는 프로젝트 경로의 / 를 - 로 바꿔 디렉터리 이름으로 쓴다
-const slug = projectPath.replace(/\//g, '-');
-const historyDir = join(homedir(), '.claude', 'projects', slug);
+// Claude Code는 프로젝트 경로의 구분자를 - 로 바꿔 디렉터리 이름으로 쓴다.
+// macOS: /Users/me/app        → -Users-me-app
+// Windows: C:\Users\me\app    → C--Users-me-app  (드라이브 문자와 콜론도 치환된다)
+const projectsRoot = join(homedir(), '.claude', 'projects');
+const slug = projectPath.replace(/[\\/:]/g, '-');
 
-if (!existsSync(historyDir)) {
+/**
+ * 슬러그 규칙이 버전·OS마다 조금씩 달라서, 정확히 맞는 폴더가 없으면
+ * 경로 뒷부분이 일치하는 폴더를 찾아본다. (`app` 으로 끝나는 폴더 중 가장 긴 것)
+ */
+function findHistoryDir() {
+  const exact = join(projectsRoot, slug);
+  if (existsSync(exact)) return exact;
+  if (!existsSync(projectsRoot)) return null;
+
+  const tail = projectPath
+    .split(/[\\/]/)
+    .filter(Boolean)
+    .slice(-2)
+    .join('-');
+  const match = readdirSync(projectsRoot)
+    .filter((d) => d.endsWith(`-${tail}`) || d.endsWith(tail))
+    .sort((a, b) => b.length - a.length)[0];
+
+  return match ? join(projectsRoot, match) : null;
+}
+
+const historyDir = findHistoryDir();
+
+if (!historyDir) {
   console.error(`이 폴더에서 진행한 Claude Code 기록이 없습니다: ${projectPath}`);
-  console.error(`(찾은 위치: ${historyDir})`);
+  console.error(`(찾은 위치: ${join(projectsRoot, slug)})`);
   process.exit(2);
 }
 

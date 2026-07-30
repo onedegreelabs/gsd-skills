@@ -46,7 +46,7 @@ GSD(Get Ship Done) 참가자를 위한 Claude Code 스킬 모음.
 스킬이 알아서 점검하고 안내하지만, 미리 해두고 싶으면 직접 실행해도 된다.
 
 ```bash
-~/gsd-skills/skills/gsd-submit/scripts/install.sh
+node ~/gsd-skills/skills/gsd-submit/scripts/install.mjs
 ```
 
 로그인은 **이미 GSD 참가 신청을 했다면 그때 쓴 계정**으로 한다.
