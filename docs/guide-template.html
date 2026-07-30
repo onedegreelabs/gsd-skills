@@ -4,48 +4,32 @@
   /* 한글 웹폰트는 용량이 커서 인라인이 불가능하다(CSP가 폰트 CDN을 막는다).
      그래서 시스템 폰트 스택을 쓰고, Windows 기본인 맑은 고딕에서도 무너지지 않도록
      얇은 웨이트와 좁은 자간을 피했다. */
+  /* 다크가 기본이다. 라이트는 사용자가 버튼으로 고를 때만 적용된다.
+     OS 설정(prefers-color-scheme)은 따르지 않는다 — 다크를 기본으로 못박기로 했다. */
   :root {
-    --paper: #f6f7f9;
-    --card: #ffffff;
-    --card-sunk: #f1f3f6;
-    --ink: #14161a;
-    --ink-soft: #5a6070;
-    --ink-faint: #8b91a1;
-    --line: #e2e5ea;
-    --line-soft: #edeff3;
-    --accent: #4f46d6;
-    --accent-soft: #eeecfd;
-    --ok: #0e8a5f;
-    --ok-soft: #e3f5ec;
-    --warn: #b45309;
-    --warn-soft: #fdf3e4;
-    --shadow: 0 1px 2px rgba(20, 22, 26, .04), 0 8px 24px -12px rgba(20, 22, 26, .12);
+    --paper: #0e1014;
+    --card: #161a21;
+    --card-sunk: #1c212a;
+    --ink: #e8eaee;
+    --ink-soft: #9aa2b4;
+    --ink-faint: #6b7382;
+    --line: #262c36;
+    --line-soft: #1f242d;
+    --accent: #9b93ff;
+    --accent-soft: #221f3d;
+    --ok: #34c48a;
+    --ok-soft: #10281f;
+    --warn: #e0a33e;
+    --warn-soft: #2a2013;
+    --shot-frame: #2b323e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
 
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     --sans: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
             "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --paper: #0e1014;
-      --card: #161a21;
-      --card-sunk: #1c212a;
-      --ink: #e8eaee;
-      --ink-soft: #9aa2b4;
-      --ink-faint: #6b7382;
-      --line: #262c36;
-      --line-soft: #1f242d;
-      --accent: #9b93ff;
-      --accent-soft: #221f3d;
-      --ok: #34c48a;
-      --ok-soft: #10281f;
-      --warn: #e0a33e;
-      --warn-soft: #2a2013;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
-    }
-  }
-
+  /* 명시적으로 다크를 지정했을 때도 같은 값 (뷰어가 data-theme 을 찍는 경우 대비) */
   :root[data-theme="dark"] {
     --paper: #0e1014;
     --card: #161a21;
@@ -61,6 +45,7 @@
     --ok-soft: #10281f;
     --warn: #e0a33e;
     --warn-soft: #2a2013;
+    --shot-frame: #2b323e;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
   }
 
@@ -79,6 +64,7 @@
     --ok-soft: #e3f5ec;
     --warn: #b45309;
     --warn-soft: #fdf3e4;
+    --shot-frame: #e2e5ea;
     --shadow: 0 1px 2px rgba(20, 22, 26, .04), 0 8px 24px -12px rgba(20, 22, 26, .12);
   }
 
@@ -217,6 +203,35 @@
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
+
+  /* 밝기 전환 */
+  button.theme {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--ink-soft);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 7px 12px;
+    cursor: pointer;
+    flex: none;
+    transition: border-color .15s, color .15s;
+  }
+
+  button.theme:hover { border-color: var(--accent); color: var(--accent); }
+  button.theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.theme svg { width: 15px; height: 15px; flex: none; }
+
+  /* 지금 테마에 맞는 아이콘·문구만 보인다 */
+  .t-sun, .t-moon { display: none; align-items: center; gap: 7px; }
+  :root .t-sun, :root[data-theme="dark"] .t-sun { display: inline-flex; }
+  :root[data-theme="light"] .t-sun { display: none; }
+  :root[data-theme="light"] .t-moon { display: inline-flex; }
 
   /* ---------------------------------------------------------------- 레이아웃 */
 
@@ -416,13 +431,14 @@
     margin: 24px 0;
   }
 
+  /* 캡처는 흰 배경의 밀그램 화면이다. 다크에서 둥둥 떠 보이지 않게 테두리를 조금 밝게 준다 */
   figure img {
     display: block;
     width: 100%;
     height: auto;
-    border: 1px solid var(--line);
+    border: 1px solid var(--shot-frame);
     border-radius: 12px;
-    background: var(--card);
+    background: #fff;
     cursor: zoom-in;
   }
 
@@ -553,6 +569,11 @@
 
   footer ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 18px; }
 
+  @media (max-width: 720px) {
+    .osnote { display: none; }
+    button.theme { padding: 7px 10px; }
+  }
+
   @media (max-width: 860px) {
     .cols { grid-template-columns: 1fr; gap: 0; }
     nav.rail { position: static; margin-bottom: 36px; }
@@ -574,7 +595,25 @@
       <button type="button" role="tab" data-pick="win" aria-selected="true">Windows</button>
       <button type="button" role="tab" data-pick="mac" aria-selected="false">Mac</button>
     </div>
-    <span class="osbar-label" id="osnote" style="color:var(--ink-faint)">화면과 명령이 선택한 쪽으로 바뀝니다</span>
+    <span class="osbar-label osnote">화면과 명령이 선택한 쪽으로 바뀝니다</span>
+
+    <button type="button" class="theme" id="themeBtn" aria-label="화면 밝기 바꾸기">
+      <span class="t-sun">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"></circle>
+          <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"></path>
+        </svg>
+        밝게
+      </span>
+      <span class="t-moon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"></path>
+        </svg>
+        어둡게
+      </span>
+    </button>
   </div>
 </div>
 
@@ -916,6 +955,23 @@
 <dialog class="zoom"><img alt=""></dialog>
 
 <script>
+  // ---- 밝기 전환 (다크 기본) --------------------------------------------
+  const THEME_KEY = "gsd-guide-theme";
+  const themeBtn = document.getElementById("themeBtn");
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 저장 못 해도 동작한다 */ }
+  }
+
+  let savedTheme = null;
+  try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) { /* 무시 */ }
+  applyTheme(savedTheme === "light" ? "light" : "dark");
+
+  themeBtn.addEventListener("click", () => {
+    applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+  });
+
   // ---- OS 전환 (Windows 기본) -------------------------------------------
   const OS_KEY = "gsd-guide-os";
   const buttons = document.querySelectorAll("[data-pick]");
