@@ -32,6 +32,9 @@ const SESSION = 'auth';
 const COMMUNITY_ID = 'c91c74be-c428-4293-bb6e-5024f4e97241'; // GSD (Get Ship Done) Club
 const MAX_IMAGES = 10;
 const LOGIN_WAIT_SECONDS = 180;
+// https://www.milgram.io/ko (루트) 는 onedegreelabs.io 마케팅 사이트로 리다이렉트된다.
+// 세션 확인용 탭은 반드시 실제 앱 화면으로 열어야 한다.
+const DEFAULT_MILGRAM_URL = 'https://www.milgram.io/ko/community/getshipdoneclub/events';
 
 // ---------------------------------------------------------------- chromux
 
@@ -70,7 +73,7 @@ function killProfile() {
 
 /** 탭을 연다 (또는 이동시킨다). 로그인 대기 중에는 절대 다시 부르면 안 된다 — 진행 중인
  *  로그인 흐름(구글 리다이렉트 등)을 이 URL로 되돌려 버려서 로그인이 끊긴다. */
-function openMilgramTab({ foreground = false, url = 'https://www.milgram.io/ko' } = {}) {
+function openMilgramTab({ foreground = false, url = DEFAULT_MILGRAM_URL } = {}) {
   chromux(['open', ...(foreground ? [] : ['--background']), SESSION, url]);
 }
 
