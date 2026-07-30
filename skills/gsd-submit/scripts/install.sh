@@ -105,17 +105,21 @@ ensure_pair() {
   cat <<EOF
 
   ── 여기만 직접 해야 한다 (30초) ────────────────────────────
-  Chrome 확장 관리 화면과 확장 폴더를 열어뒀다.
+  Chrome 확장 관리 화면과 확장 폴더, 밀그램 페이지를 열어뒀다.
 
    1. 확장 화면 오른쪽 위 [개발자 모드] 를 켠다
    2. [압축해제된 확장 프로그램을 로드합니다] 를 누른다
    3. 방금 열린 Finder 창의 extension 폴더를 고른다
+   4. 내친김에 밀그램 탭에서 로그인까지 해둔다
+      (GSD 신청에 쓴 계정으로)
 
   ─────────────────────────────────────────────────────────
 EOF
 
-  open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
+  # 로그인 탭을 먼저, 확장 화면을 마지막에 — 확장 화면이 앞에 보이게
+  open -a "Google Chrome" "https://www.milgram.io/ko" 2>/dev/null || true
   open "$CHROMUX_DIR/extension" 2>/dev/null || true
+  open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
 
   printf '  연결을 기다리는 중'
   for _ in $(seq 1 60); do
