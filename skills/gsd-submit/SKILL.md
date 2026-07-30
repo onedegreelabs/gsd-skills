@@ -8,6 +8,11 @@ description: GSD(Get Ship Done)에서 오늘 만든 프로젝트를 밀그램(mi
 오늘 하루 만든 것을 밀그램 이벤트 페이지의 **제출물**로 올린다.
 수강생은 "제출해줘" 한마디만 하면 되고, 나머지는 여기서 전부 한다.
 
+> **이 파일을 직접 읽어서 진행하는 경우** (스킬로 로드되지 않고 clone된 폴더에서 읽었을 때)
+> 아래의 `scripts/…`, `references/…` 경로는 **이 SKILL.md가 있는 폴더 기준**이다.
+> 보통 `~/gsd-skills/skills/gsd-submit/` 이다. 그대로 이어서 진행하면 된다 —
+> 스킬로 로드되어 있을 때와 하는 일이 완전히 같다.
+
 밀그램에 공개 API 문서는 없지만 프론트가 쓰는 REST가 그대로 열려 있다.
 **UI를 클릭하지 않고 그 API를 직접 호출한다.** 브라우저는 로그인 토큰을 읽고 화면을 캡처할 때만 쓴다.
 자세한 엔드포인트는 [references/milgram-api.md](references/milgram-api.md).

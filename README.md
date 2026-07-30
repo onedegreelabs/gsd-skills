@@ -9,25 +9,27 @@ GSD(Get Ship Done) 참가자를 위한 Claude Code 스킬 모음.
 > **처음 쓰시나요? → [수강생 가이드](GUIDE.md)**
 > 화면 캡처와 함께 처음부터 끝까지 설명되어 있습니다.
 
-## 설치
+## 지금 바로 쓰는 법 (실습 중인 창 그대로)
 
-터미널에 아래 한 줄을 붙여넣고 실행한다.
+터미널을 열거나 Claude Code를 다시 실행할 필요 없다.
+**작업하던 Claude Code 창에** 아래 문장을 붙여넣으면 끝이다.
 
-```bash
-git clone https://github.com/onedegreelabs/gsd-skills ~/gsd-skills && mkdir -p ~/.claude/skills && ln -sfn ~/gsd-skills/skills/gsd-submit ~/.claude/skills/gsd-submit
+```
+~/gsd-skills 에 https://github.com/onedegreelabs/gsd-skills 를 clone(이미 있으면 pull)한 다음, ~/gsd-skills/skills/gsd-submit/SKILL.md 를 읽고 그 안내대로 밀그램에 제출까지 끝내줘. 스크립트 경로는 그 폴더 기준이야.
 ```
 
-그리고 **Claude Code를 새로 실행한다.** 이미 켜져 있던 창에는 잡히지 않는다.
-
-## 쓰는 법
-
-오늘 작업한 프로젝트 폴더에서 Claude Code를 켜고 이렇게 말하면 된다.
+이 문장이 스킬 설치까지 함께 하므로, **다음에 Claude Code를 새로 실행한 뒤부터는**
+이렇게만 말하면 된다.
 
 ```
 밀그램에 제출해줘
 ```
 
-그러면 알아서 이렇게 한다.
+> 실행 중인 세션은 새로 설치된 스킬을 바로 인식하지 못한다
+> (`~/.claude/skills/` 가 세션 시작 시점에 없었으면 재시작이 필요하다).
+> 위의 긴 문장은 스킬 로딩을 우회해 **SKILL.md를 직접 읽게** 하는 것이고, 하는 일은 같다.
+
+어느 쪽이든 알아서 이렇게 한다.
 
 1. 오늘 Claude와 나눈 작업 기록과 코드를 읽어 **무엇을 만들었는지** 정리한다
 2. 만든 서비스 화면을 **캡처**해 대표 이미지로 쓴다
@@ -44,10 +46,12 @@ git clone https://github.com/onedegreelabs/gsd-skills ~/gsd-skills && mkdir -p ~
 스킬이 알아서 점검하고 안내하지만, 미리 해두고 싶으면 직접 실행해도 된다.
 
 ```bash
-~/.claude/skills/gsd-submit/scripts/install.sh
+~/gsd-skills/skills/gsd-submit/scripts/install.sh
 ```
 
-로그인은 **GSD 참가 신청에 쓴 계정**으로 해야 한다. 한 번 하면 다음 기수부터는 로그인도 없다.
+로그인은 **이미 GSD 참가 신청을 했다면 그때 쓴 계정**으로 한다.
+신청을 안 했으면 아무 계정이나 괜찮다 — 참가 신청까지 스킬이 대신 한다.
+한 번 로그인하면 다음 기수부터는 로그인도 없다.
 자세한 내용은 [setup.md](skills/gsd-submit/references/setup.md).
 
 ## 자주 묻는 것
