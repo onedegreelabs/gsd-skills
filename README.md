@@ -6,8 +6,9 @@ GSD(Get Ship Done) 참가자를 위한 Claude Code 스킬 모음.
 |---|---|
 | [gsd-submit](skills/gsd-submit/) | 오늘 만든 프로젝트를 밀그램 이벤트 페이지에 제출물로 등록 — 내용 정리부터 화면 캡처, 최종 제출까지 |
 
-> **처음 쓰시나요? → [수강생 가이드](GUIDE.md)**
-> 화면 캡처와 함께 처음부터 끝까지 설명되어 있습니다.
+> **처음 쓰시나요? → [수강생 가이드 (웹)](https://claude.ai/code/artifact/d3db23d2-f3a0-48d3-ae29-0facc2169faa)**
+> Windows·Mac 각각, 실제 화면 캡처와 함께 처음부터 끝까지 설명되어 있습니다.
+> 텍스트 버전은 [GUIDE.md](GUIDE.md), 페이지 소스는 [docs/](docs/).
 
 ## 지금 바로 쓰는 법 (실습 중인 창 그대로)
 

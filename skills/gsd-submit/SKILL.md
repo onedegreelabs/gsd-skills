@@ -34,6 +34,25 @@ description: GSD(Get Ship Done)에서 오늘 만든 프로젝트를 밀그램(mi
 
 ## 0. 사전 점검
 
+스크립트는 전부 Node로 되어 있다 (Windows·macOS 공용). **Node가 먼저 있어야 한다** —
+Claude Code 설치가 Node를 깔아주지는 않으므로 없는 노트북이 있다.
+
+```bash
+node -v      # v22 이상이면 통과
+```
+
+없거나 22 미만이면 설치한다. 수강생에게 터미널을 치게 하지 말고 **직접 실행한다.**
+
+| OS | 명령 |
+|---|---|
+| Windows | `winget install OpenJS.NodeJS.LTS` |
+| macOS | `brew install node` (brew가 없으면 nodejs.org 설치 페이지를 열어준다) |
+
+> **설치 직후 `node` 가 안 잡히는 게 정상이다** — 실행 중인 세션의 PATH에 반영되지 않는다.
+> 여기서 세션을 재시작하지 말고 **절대 경로로 부른다.**
+> Windows `"C:\Program Files\nodejs\node.exe"`, macOS `/opt/homebrew/bin/node` 또는 `/usr/local/bin/node`.
+> 이후 모든 `node …` 명령을 그 절대 경로로 바꿔 실행하면 된다.
+
 ```bash
 node scripts/preflight.mjs
 ```
