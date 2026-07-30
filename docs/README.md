@@ -2,7 +2,7 @@
 
 수강생에게 링크로 공유하는 가이드 페이지의 원본이다.
 
-- **발행된 페이지**: https://claude.ai/code/artifact/d3db23d2-f3a0-48d3-ae29-0facc2169faa
+- **발행된 페이지**: https://onedegreelabs.github.io/gsd-skills/
 - **텍스트 버전**: [../GUIDE.md](../GUIDE.md)
 
 ## 구성

@@ -3,7 +3,7 @@
 오늘 만든 프로젝트를 밀그램 이벤트 페이지에 올리는 방법입니다.
 
 > 📱 **화면 캡처와 함께 보기 (Windows·Mac 각각)**
-> → https://claude.ai/code/artifact/d3db23d2-f3a0-48d3-ae29-0facc2169faa
+> → https://onedegreelabs.github.io/gsd-skills/
 
 **실습하던 Claude Code 창에 문장 하나 붙여넣기 → 밀그램 로그인 한 번 → 회고 한 줄.**
 이게 전부입니다. 터미널에 명령어를 칠 일도, Claude Code를 다시 켤 일도 없습니다.
