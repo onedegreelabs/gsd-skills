@@ -8,7 +8,7 @@ GSD(Get Ship Done) 참가자를 위한 Claude Code 스킬 모음.
 
 > **처음 쓰시나요? → [수강생 가이드](https://onedegreelabs.github.io/gsd-skills/)**
 > Windows·Mac 각각, 실제 화면 캡처와 함께 처음부터 끝까지 설명되어 있습니다.
-> 텍스트 버전은 [GUIDE.md](GUIDE.md), 페이지 소스는 [docs/index.html](docs/index.html).
+> 페이지 소스는 [docs/index.html](docs/index.html) — 워딩은 거기서 고친다.
 
 ## 지금 바로 쓰는 법 (실습 중인 창 그대로)
 
